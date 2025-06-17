@@ -15,6 +15,7 @@ export type Env = {
   GQL_API_WS_URL: string;
   HASURA_API_URL: string;
   HASURA_GRAPHQL_JWT_SECRET: string;
+  JWKS_URL: string;
   JWT_ALGORITHMS: Algorithm[];
   JWT_EXPIRATION: string;
   LOG_FILE: string;
@@ -47,6 +48,7 @@ export const defaultEnv: Env = {
   GQL_API_WS_URL: 'ws://localhost:8080/v1/graphql',
   HASURA_API_URL: 'http://hasura:8080',
   HASURA_GRAPHQL_JWT_SECRET: '',
+  JWKS_URL: '',
   JWT_ALGORITHMS: ['HS256'],
   JWT_EXPIRATION: '36h',
   LOG_FILE: 'console',
@@ -118,6 +120,7 @@ export function getEnv(): Env {
   const GQL_API_URL = env['GQL_API_URL'] ?? defaultEnv.GQL_API_URL;
   const GQL_API_WS_URL = env['GQL_API_WS_URL'] ?? defaultEnv.GQL_API_WS_URL;
   const HASURA_GRAPHQL_JWT_SECRET = env['HASURA_GRAPHQL_JWT_SECRET'] ?? defaultEnv.HASURA_GRAPHQL_JWT_SECRET;
+  const JWKS_URL = env['JWKS_URL'] ?? defaultEnv.JWKS_URL;
   const HASURA_API_URL = env['HASURA_API_URL'] ?? defaultEnv.HASURA_API_URL;
   const JWT_ALGORITHMS = parseArray(env['JWT_ALGORITHMS'], defaultEnv.JWT_ALGORITHMS);
   const JWT_EXPIRATION = env['JWT_EXPIRATION'] ?? defaultEnv.JWT_EXPIRATION;
@@ -150,6 +153,7 @@ export function getEnv(): Env {
     GQL_API_WS_URL,
     HASURA_API_URL,
     HASURA_GRAPHQL_JWT_SECRET,
+    JWKS_URL,
     JWT_ALGORITHMS,
     JWT_EXPIRATION,
     LOG_FILE,
