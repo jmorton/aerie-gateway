@@ -17,6 +17,7 @@ This document provides detailed information about environment variables for the 
 | `GQL_API_WS_URL`            | URL of GraphQL WebSocket API for the GraphQL Playground.                                             | `string` | ws://localhost:8080/v1/graphql                 |
 | `HASURA_API_URL`            | URL of the base Hasura API.                                                                          | `string` | http://hasura:8080/                            |
 | `HASURA_GRAPHQL_JWT_SECRET` | The JWT secret. Also in Hasura. **Required** even if auth off in Hasura.                             | `string` |                                                |
+| `JWKS_URL`                 | URL to a JWKS endpoint used for verifying incoming JWTs. When set, `HASURA_GRAPHQL_JWT_SECRET` is only used for signing tokens. | `string` |                                                |
 | `JWT_ALGORITHMS`            | List of [JWT signing algorithms][algorithms]. Must include algorithm in `HASURA_GRAPHQL_JWT_SECRET`. | `array`  | ["HS256"]                                      |
 | `JWT_EXPIRATION`            | Amount of time until JWT expires.                                                                    | `string` | 36h                                            |
 | `LOG_FILE`                  | Either an output filepath to log to, or 'console'.                                                   | `string` | console                                        |

@@ -1,6 +1,7 @@
 import jwt, { Algorithm } from 'jsonwebtoken';
 import type { Response } from 'node-fetch';
 import fetch from 'node-fetch';
+import { createPublicKey, KeyObject } from 'crypto';
 import { getEnv } from '../../env.js';
 import getLogger from '../../logger.js';
 import { DbMerlin } from '../db/db.js';
@@ -16,6 +17,29 @@ import type {
 import { loginSSO } from './adapters/CAMAuthAdapter.js';
 
 const logger = getLogger('packages/auth/functions');
+
+type Jwk = {
+  kid: string;
+  [key: string]: unknown;
+};
+
+let jwkCache: Record<string, KeyObject> = {};
+
+async function getJwk(kid: string, url: string): Promise<KeyObject> {
+  if (jwkCache[kid]) return jwkCache[kid];
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Unable to fetch JWKS: ${res.status}`);
+  }
+  const { keys } = (await res.json()) as { keys: Jwk[] };
+  const match = keys.find(k => k.kid === kid);
+  if (!match) {
+    throw new Error(`Signing key not found for kid ${kid}`);
+  }
+  const key = createPublicKey({ key: match, format: 'jwk' });
+  jwkCache[kid] = key;
+  return key;
+}
 
 export function authorizationHeaderToToken(authorizationHeader: string | undefined | null): JsonWebToken | never {
   if (authorizationHeader !== null && authorizationHeader !== undefined) {
@@ -107,13 +131,32 @@ export async function syncRolesToDB(username: string, default_role: string, allo
   await db.query('commit;');
 }
 
-export function decodeJwt(authorizationHeader: string | undefined): JwtDecode {
+export async function decodeJwt(
+  authorizationHeader: string | undefined,
+): Promise<JwtDecode> {
   try {
     const token = authorizationHeaderToToken(authorizationHeader);
-    const { HASURA_GRAPHQL_JWT_SECRET, JWT_ALGORITHMS } = getEnv();
-    const { key }: JwtSecret = JSON.parse(HASURA_GRAPHQL_JWT_SECRET);
+    const { HASURA_GRAPHQL_JWT_SECRET, JWT_ALGORITHMS, JWKS_URL } = getEnv();
     const options: jwt.VerifyOptions = { algorithms: JWT_ALGORITHMS };
-    const jwtPayload = jwt.verify(token, key, options) as JwtPayload;
+
+    let jwtPayload: JwtPayload;
+
+    if (JWKS_URL) {
+      const decoded = jwt.decode(token, { complete: true }) as {
+        header: { kid?: string };
+      } | null;
+
+      if (!decoded || typeof decoded === 'string' || !decoded.header.kid) {
+        throw new Error('Token missing kid header');
+      }
+
+      const jwk = await getJwk(decoded.header.kid, JWKS_URL);
+      jwtPayload = jwt.verify(token, jwk, options) as JwtPayload;
+    } else {
+      const { key }: JwtSecret = JSON.parse(HASURA_GRAPHQL_JWT_SECRET);
+      jwtPayload = jwt.verify(token, key, options) as JwtPayload;
+    }
+
     return { jwtErrorMessage: '', jwtPayload };
   } catch (e) {
     console.error(e);
@@ -210,7 +253,7 @@ export async function login(username: string, password: string): Promise<AuthRes
 }
 
 export async function session(authorizationHeader: string | undefined): Promise<SessionResponse> {
-  const { jwtErrorMessage, jwtPayload } = decodeJwt(authorizationHeader);
+  const { jwtErrorMessage, jwtPayload } = await decodeJwt(authorizationHeader);
 
   if (jwtPayload) {
     return { message: 'Token is valid', success: true };
